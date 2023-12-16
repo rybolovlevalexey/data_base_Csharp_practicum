@@ -23,7 +23,7 @@ namespace data_base_practicum
                     mov.tags_str = iter_to_string(mov.tags);
                     db.Movies.Add(mov);
 
-                    if (i % 1000 == 0)
+                    if (i % 10000 == 0)
                         Console.WriteLine($"{i} objects saved correctly");
                     i += 1;
                 }
