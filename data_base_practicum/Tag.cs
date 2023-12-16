@@ -9,8 +9,13 @@ namespace data_base_practicum
 {
     public class Tag
     {
-        public string TagId { get; set; }
-        public string text;
+        [Key]
+        public int Id { get; set; }
 
+        public string text { get; set; }
+        public string? movies_str { get; set; }
+
+        public Tag() { }
+        public Tag(string tag_name) { text = tag_name; }
     }
 }

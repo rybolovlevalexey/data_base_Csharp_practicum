@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System;
 using System.Collections;
 
 namespace data_base_practicum
@@ -11,27 +13,85 @@ namespace data_base_practicum
         static string dataset_path = @"C:\Универ\ml-latest\";
 
         static void Main(string[] args)
-        {            
-            make_answer_dicts();
-            using (ApplicationContext db = new ApplicationContext())
-            {
-                int i = 0;
-                foreach (var mov in films.Values)
-                {
-                    mov.actors_str = iter_to_string(mov.actors);
-                    mov.directors_str = iter_to_string(mov.directors);
-                    mov.tags_str = iter_to_string(mov.tags);
-                    db.Movies.Add(mov);
-
-                    if (i % 10000 == 0)
-                        Console.WriteLine($"{i} objects saved correctly");
-                    i += 1;
-                }
-                db.SaveChanges();
-            }
-            Console.WriteLine("Movies saved correctly");
+        {
+            //make_answer_dicts();
+            //uploading_to_database(true, true, false);
+            testing_DB();
         }
 
+        static void reading_test()
+        {
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                // получаем объекты из бд и выводим на консоль
+                var answer = db.Movies.ToList();
+                Console.WriteLine("Info from DB");
+                foreach (var elem in answer)
+                {
+                    Console.WriteLine($"{elem.name} {elem.rating}");
+                    break;
+                }
+            }
+        }
+
+        static void uploading_to_database(bool flag_movies, bool flag_tags, bool flag_persons)
+        {
+            if (flag_movies)
+            {
+                using (ApplicationContext db = new ApplicationContext())
+                {
+                    int i = 0;
+                    foreach (var mov in films.Values)
+                    {
+                        mov.actors_str = iter_to_string(mov.actors);
+                        mov.directors_str = iter_to_string(mov.directors);
+                        mov.tags_str = iter_to_string(mov.tags);
+                        db.Movies.Add(mov);
+
+                        if (i % 100000 == 0)
+                            Console.WriteLine($"{i} movies saved");
+                        i += 1;
+                    }
+                    Console.WriteLine("Movies saving in process...");
+                    db.SaveChanges();
+                }
+                Console.WriteLine("Movies saved correctly");
+            }
+            if (flag_tags) 
+            {
+                using (ApplicationContext db = new ApplicationContext())
+                {
+                    int i = 0;
+                    foreach (var key in tags_dict.Keys)
+                    {
+                        Tag tag = new Tag(key);
+                        tag.movies_str = list_to_string(tags_dict[key]);
+                        db.Tags.Add(tag);
+
+                        if (i % 1000 == 0)
+                            Console.WriteLine($"{i} tags saved");
+                        i += 1;
+                    }
+                    Console.WriteLine("Tags saving in process...");
+                    db.SaveChanges();
+                }
+                Console.WriteLine("Tags saved correctly");
+            }
+            if (flag_persons) { }
+        }
+        static string list_to_string(List<Movie> movies)
+        {
+            string result = "";
+            int i = 1;
+            foreach (var elem in movies)
+            {
+                result += $"{i}) {elem.name} ";
+                i += 1;
+                if (i >= 100)
+                    break;
+            }
+            return result;
+        }
         static string iter_to_string(HashSet<string> iter)
         {
             string result = "";
@@ -61,15 +121,21 @@ namespace data_base_practicum
                 term1.actors_str = iter_to_string(term.actors);
                 term1.directors_str = iter_to_string(term.directors);
 
-                Tag t = new Tag();
-                t.text = "lol";
-                t.TagId = "1";
 
-                db.Tags.Add(t);
-                db.Movies.Add(term);
-                db.Movies.Add(term1);
+                Tag tag = new Tag("comedy");
+                tag.movies_str = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
+
+                Person per = new Person("reynolds rayan");
+                per.actor_movies_names = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
+                per.director_movies_names = list_to_string(new List<Movie>() { new Movie("drive") });
+                
+                db.Humans.Add(per);
+                //db.Tags.Add(tag);
+                //db.Movies.Add(term);
+                //db.Movies.Add(term1);
+                
                 db.SaveChanges();
-                Console.WriteLine("Objects saved correctly");
+                Console.WriteLine("Test objects saved correctly");
             }
         }
         static void while_true_answer()
