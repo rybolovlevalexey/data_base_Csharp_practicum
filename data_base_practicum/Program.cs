@@ -17,24 +17,64 @@ namespace data_base_practicum
 
         static void Main(string[] args)
         {
-            make_answer_dicts();
-            
-            uploading_database_movies();
-            uploading_database_tags();
-            uploading_database_persons();
+            //make_answer_dicts();
+
+            take_from_bd("b", "George Lucas");
         }
 
-        static void reading_test()
+        static void take_from_bd(string type, string cur_name)
         {
-            using (ApplicationContext db = new ApplicationContext())
+            if (type == "a")
             {
-                // получаем объекты из бд и выводим на консоль
-                var answer = db.Movies.ToList();
-                Console.WriteLine("Info from DB");
-                foreach (var elem in answer)
+                using (ApplicationContext db = new ApplicationContext())
                 {
-                    Console.WriteLine($"{elem.name} {elem.rating}");
-                    break;
+                    var result = db.Movies
+                        .Where(x => x.name == cur_name)
+                        .FirstOrDefault();
+                    if (result != null)
+                    {
+                        Console.WriteLine($"Film {cur_name} has got rating {result.rating}");
+                        Console.WriteLine($"Actors: {result.actors_str}");
+                        Console.WriteLine($"Directors: {result.directors_str}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Not found in Data Base");
+                    }
+                }
+            }
+            if (type == "b")
+            {
+                using (ApplicationContext db = new ApplicationContext())
+                {
+                    var result = db.Humans
+                        .Where(x => x.name == cur_name)
+                        .FirstOrDefault();
+                    if (result != null)
+                    {
+                        Console.WriteLine($"{cur_name}s films: {result.actor_movies_names} and {result.director_movies_names}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Not found in Data Base");
+                    }
+                }
+            }
+            if (type == "c")
+            {
+                using (ApplicationContext db = new ApplicationContext())
+                {
+                    var result = db.Tags
+                        .Where(x => x.text == cur_name)
+                        .FirstOrDefault();
+                    if (result != null)
+                    {
+                        Console.WriteLine($"Tag {cur_name} films: {result.movies_str}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Not found in Data Base");
+                    }
                 }
             }
         }
