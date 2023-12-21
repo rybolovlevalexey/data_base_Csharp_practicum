@@ -13,7 +13,7 @@ namespace data_base_practicum
 
         public ApplicationContext()
         {
-            Database.EnsureDeleted();
+            //Database.EnsureDeleted();
             Database.EnsureCreated();
         }
 

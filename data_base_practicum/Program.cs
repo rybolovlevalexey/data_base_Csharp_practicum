@@ -12,11 +12,16 @@ namespace data_base_practicum
         static Dictionary<string, List<Movie>> tags_dict = new Dictionary<string, List<Movie>>();  // тэг: фильмы
         static string dataset_path = @"C:\Универ\ml-latest\";
 
+        static Dictionary<string, Person>? static_result_people;
+        static Dictionary<string, List<string>>? global_films_id_name;
+
         static void Main(string[] args)
         {
-            //make_answer_dicts();
-            //uploading_to_database(true, true, false);
-            testing_DB();
+            make_answer_dicts();
+            
+            uploading_database_movies();
+            uploading_database_tags();
+            uploading_database_persons();
         }
 
         static void reading_test()
@@ -34,50 +39,88 @@ namespace data_base_practicum
             }
         }
 
-        static void uploading_to_database(bool flag_movies, bool flag_tags, bool flag_persons)
+        static void uploading_database_movies()
         {
-            if (flag_movies)
+            using (ApplicationContext db = new ApplicationContext())
             {
-                using (ApplicationContext db = new ApplicationContext())
+                int i = 0;
+                foreach (var mov in films.Values)
                 {
-                    int i = 0;
-                    foreach (var mov in films.Values)
-                    {
-                        mov.actors_str = iter_to_string(mov.actors);
-                        mov.directors_str = iter_to_string(mov.directors);
-                        mov.tags_str = iter_to_string(mov.tags);
-                        db.Movies.Add(mov);
+                    mov.actors_str = iter_to_string(mov.actors);
+                    mov.directors_str = iter_to_string(mov.directors);
+                    mov.tags_str = iter_to_string(mov.tags);
+                    db.Movies.Add(mov);
 
-                        if (i % 100000 == 0)
-                            Console.WriteLine($"{i} movies saved");
-                        i += 1;
-                    }
-                    Console.WriteLine("Movies saving in process...");
+                    if (i % 100000 == 0)
+                        Console.WriteLine($"{i} movies saved");
+                    i += 1;
+                }
+                Console.WriteLine("Movies saving in process...");
+                db.SaveChanges();
+            }
+            Console.WriteLine("Movies saved correctly");
+        }
+        static void uploading_database_tags()
+        {
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                int i = 0;
+                foreach (var key in tags_dict.Keys)
+                {
+                    Tag tag = new Tag(key);
+                    tag.movies_str = list_to_string(tags_dict[key]);
+                    db.Tags.Add(tag);
+
+                    if (i % 100 == 0)
+                        Console.WriteLine($"{i} tags saved");
+                    i += 1;
+                }
+                Console.WriteLine("Tags saving in process...");
+                db.SaveChanges();
+            }
+            Console.WriteLine("Tags saved correctly");
+        }
+        static void uploading_database_persons()
+        {
+            using (ApplicationContext db = new ApplicationContext())
+            {
+                int i = 0;
+                foreach (var per in static_result_people.Values)
+                {
+                    
+                    if (per == null || (per.actor_movis_id.Count == 0 && per.director_movies_id.Count == 0))
+                        continue;
+                    per.actor_movies_names = list_withIDfilms_to_string(per.actor_movis_id);
+                    per.director_movies_names = list_withIDfilms_to_string(per.director_movies_id);
+                    
+                    
+                    db.Humans.Add(per);
+
+                    if (i % 100000 == 0)
+                        Console.WriteLine($"{i} persons saved");
+                    i += 1;
                     db.SaveChanges();
                 }
-                Console.WriteLine("Movies saved correctly");
+                Console.WriteLine("Persons saving in process...");
             }
-            if (flag_tags) 
-            {
-                using (ApplicationContext db = new ApplicationContext())
-                {
-                    int i = 0;
-                    foreach (var key in tags_dict.Keys)
-                    {
-                        Tag tag = new Tag(key);
-                        tag.movies_str = list_to_string(tags_dict[key]);
-                        db.Tags.Add(tag);
+            Console.WriteLine("Persons saved correctly");
+        }
 
-                        if (i % 1000 == 0)
-                            Console.WriteLine($"{i} tags saved");
-                        i += 1;
-                    }
-                    Console.WriteLine("Tags saving in process...");
-                    db.SaveChanges();
+        static string list_withIDfilms_to_string(List<string> movies_id)
+        {
+            string result = "";
+            int i = 1;
+            foreach (var mov_id in movies_id)
+            {
+                if (i > 10)
+                    break;
+                foreach (var mov_name in global_films_id_name[mov_id])
+                {
+                    result += $"{i}) {mov_name} ";
+                    i += 1;
                 }
-                Console.WriteLine("Tags saved correctly");
             }
-            if (flag_persons) { }
+            return result;
         }
         static string list_to_string(List<Movie> movies)
         {
@@ -129,7 +172,7 @@ namespace data_base_practicum
                 per.actor_movies_names = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
                 per.director_movies_names = list_to_string(new List<Movie>() { new Movie("drive") });
                 
-                db.Humans.Add(per);
+                //db.Humans.Add(per);
                 //db.Tags.Add(tag);
                 //db.Movies.Add(term);
                 //db.Movies.Add(term1);
@@ -226,6 +269,7 @@ namespace data_base_practicum
                     }
                 }
             }
+            global_films_id_name = id_name;
             Console.WriteLine("The initial review of the films is done.");
 
 
@@ -257,6 +301,7 @@ namespace data_base_practicum
 
             // наполнение фильмов их актёрами и режиссёрами
             Dictionary<string, Person> result_people = make_people(id_name);
+            static_result_people = result_people;
             foreach (var per in result_people.Values.AsParallel())
             {
                 foreach (var movie_id in per.actor_movis_id)
