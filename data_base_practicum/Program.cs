@@ -1,7 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
 using System.Collections;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 
 namespace data_base_practicum
 {
@@ -15,11 +19,90 @@ namespace data_base_practicum
         static Dictionary<string, Person>? static_result_people;
         static Dictionary<string, List<string>>? global_films_id_name;
 
+        static Dictionary<string, List<string>> top10_dict = new Dictionary<string, List<string>>();
+
         static void Main(string[] args)
         {
-            //make_answer_dicts();
+            make_answer_dicts();
+            make_top10();
+        }
 
-            take_from_bd("b", "George Lucas");
+        static void make_top10()
+        {
+            Console.WriteLine("Saving top10 to BD started");
+            using (AppContextTop10 db = new AppContextTop10())
+            {
+                //db.Top10.BulkInsert(, options => options.IncludeGraph = true);
+
+                foreach (var cur_film in films.Keys.AsParallel())
+                {
+                    List<string> films_top10 = new List<string>();
+                    foreach (var film_name in films.Keys.AsParallel())
+                    {
+                        if (film_name == cur_film)
+                            continue;
+                        float unionCount = 0;
+                        float intersectionCount = 0;
+
+                        foreach (var item in films[cur_film].actors)
+                        {
+                            if (films[film_name].actors.Contains(item))
+                                intersectionCount += 1;
+                            unionCount += 1;
+                        }
+                        foreach (var item in films[film_name].actors)
+                        {
+                            if (!films[cur_film].actors.Contains(item))
+                                unionCount += 1;
+                        }
+
+                        foreach (var item in films[cur_film].tags)
+                        {
+                            if (films[film_name].tags.Contains(item))
+                                intersectionCount += 1;
+                            unionCount += 1;
+                        }
+                        foreach (var item in films[film_name].tags)
+                        {
+                            if (!films[cur_film].tags.Contains(item))
+                                unionCount += 1;
+                        }
+
+                        foreach (var item in films[cur_film].directors)
+                        {
+                            if (films[film_name].directors.Contains(item))
+                                intersectionCount += 1;
+                            unionCount += 1;
+                        }
+                        foreach (var item in films[film_name].directors)
+                        {
+                            if (!films[cur_film].directors.Contains(item))
+                                unionCount += 1;
+                        }
+
+                        if (intersectionCount / unionCount >= 0.7)
+                        {
+                            films_top10.Add(film_name);
+                            if (films_top10.Count >= 10)
+                                break;
+                        }
+                    }
+                    top10_dict[cur_film] = films_top10;
+                    
+                    var top10_ex = new MovieTop10(cur_film);
+                    string res_top10 = "";
+                    int i = 1;
+                    foreach (var val in films_top10)
+                    {
+                        res_top10 += $"{i}) {val} ";
+                        i += 1;
+                    }
+                    top10_ex.top10_movies = res_top10;
+                    db.Top10.Add(top10_ex);
+                }
+                db.SaveChanges();
+            }
+            Console.WriteLine("Saving top10 to BD finished");
         }
 
         static void take_from_bd(string type, string cur_name)
@@ -78,13 +161,12 @@ namespace data_base_practicum
                 }
             }
         }
-
         static void uploading_database_movies()
         {
             using (ApplicationContext db = new ApplicationContext())
             {
                 int i = 0;
-                foreach (var mov in films.Values)
+                foreach (var mov in films.Values.AsParallel())
                 {
                     mov.actors_str = iter_to_string(mov.actors);
                     mov.directors_str = iter_to_string(mov.directors);
@@ -105,7 +187,7 @@ namespace data_base_practicum
             using (ApplicationContext db = new ApplicationContext())
             {
                 int i = 0;
-                foreach (var key in tags_dict.Keys)
+                foreach (var key in tags_dict.Keys.AsParallel())
                 {
                     Tag tag = new Tag(key);
                     tag.movies_str = list_to_string(tags_dict[key]);
@@ -125,7 +207,7 @@ namespace data_base_practicum
             using (ApplicationContext db = new ApplicationContext())
             {
                 int i = 0;
-                foreach (var per in static_result_people.Values)
+                foreach (var per in static_result_people.Values.AsParallel())
                 {
                     
                     if (per == null || (per.actor_movis_id.Count == 0 && per.director_movies_id.Count == 0))
@@ -186,6 +268,7 @@ namespace data_base_practicum
             }
             return result;
         }
+        
         static void testing_DB()
         {
             using (ApplicationContext db = new ApplicationContext())
@@ -281,6 +364,7 @@ namespace data_base_practicum
                 }
             }
         }
+        
         static void make_answer_dicts()
         {
             Console.WriteLine("Processing of movie data");
