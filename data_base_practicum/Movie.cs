@@ -25,7 +25,35 @@ namespace data_base_practicum
         public string? actors_str { get; set; }
         public string? directors_str { get; set; }
 
-
+        public void iter_to_tags(HashSet<string> iter)
+        {
+            StringBuilder result = new StringBuilder();
+            Parallel.ForEach(iter, elem =>
+            {
+                result.Append($"{elem} ");
+            });
+            tags_str = result.ToString();
+        }
+        public void iter_to_actors(HashSet<string> iter)
+        {
+            StringBuilder result = new StringBuilder();
+            // переписать на стринг билдер
+            Parallel.ForEach(iter, elem =>
+            {
+                result.Append($"{elem} ");
+            });
+            actors_str = result.ToString();
+        }
+        public void iter_to_directors(HashSet<string> iter)
+        {
+            StringBuilder result = new StringBuilder();
+            // переписать на стринг билдер
+            Parallel.ForEach(iter, elem =>
+            {
+                result.Append($"{elem} ");
+            });
+            directors_str = result.ToString();
+        }
         public Movie(string cur_name)
         {
             name = cur_name;

@@ -20,6 +20,8 @@ namespace data_base_practicum
         static Dictionary<string, List<string>>? global_films_id_name;
 
         static Dictionary<string, List<string>> top10_dict = new Dictionary<string, List<string>>();
+        static List<MovieTop10> top10_classes = new List<MovieTop10>();
+
 
         static void Main(string[] args)
         {
@@ -32,9 +34,7 @@ namespace data_base_practicum
             Console.WriteLine("Saving top10 to BD started");
             using (AppContextTop10 db = new AppContextTop10())
             {
-                //db.Top10.BulkInsert(, options => options.IncludeGraph = true);
-
-                foreach (var cur_film in films.Keys.AsParallel())
+                foreach (var cur_film in films.Keys)
                 {
                     List<string> films_top10 = new List<string>();
                     foreach (var film_name in films.Keys.AsParallel())
@@ -98,8 +98,12 @@ namespace data_base_practicum
                         i += 1;
                     }
                     top10_ex.top10_movies = res_top10;
-                    db.Top10.Add(top10_ex);
+
+                    var elem = new MovieTop10(cur_film);
+                    elem.top10_movies = res_top10;
+                    top10_classes.Add(elem);
                 }
+                db.Top10.BulkInsert(top10_classes, options => options.IncludeGraph = true);
                 db.SaveChanges();
             }
             Console.WriteLine("Saving top10 to BD finished");
@@ -165,18 +169,13 @@ namespace data_base_practicum
         {
             using (ApplicationContext db = new ApplicationContext())
             {
-                int i = 0;
-                foreach (var mov in films.Values.AsParallel())
+                Parallel.ForEach(films.Values, mov =>
                 {
-                    mov.actors_str = iter_to_string(mov.actors);
-                    mov.directors_str = iter_to_string(mov.directors);
-                    mov.tags_str = iter_to_string(mov.tags);
+                    mov.iter_to_actors(mov.actors);
+                    mov.iter_to_directors(mov.directors);
+                    mov.iter_to_tags(mov.tags);
                     db.Movies.Add(mov);
-
-                    if (i % 100000 == 0)
-                        Console.WriteLine($"{i} movies saved");
-                    i += 1;
-                }
+                });
                 Console.WriteLine("Movies saving in process...");
                 db.SaveChanges();
             }
@@ -186,17 +185,12 @@ namespace data_base_practicum
         {
             using (ApplicationContext db = new ApplicationContext())
             {
-                int i = 0;
-                foreach (var key in tags_dict.Keys.AsParallel())
+                Parallel.ForEach(tags_dict.Keys, key =>
                 {
                     Tag tag = new Tag(key);
-                    tag.movies_str = list_to_string(tags_dict[key]);
+                    tag.list_to_movies(tags_dict[key]);
                     db.Tags.Add(tag);
-
-                    if (i % 100 == 0)
-                        Console.WriteLine($"{i} tags saved");
-                    i += 1;
-                }
+                });
                 Console.WriteLine("Tags saving in process...");
                 db.SaveChanges();
             }
@@ -207,103 +201,61 @@ namespace data_base_practicum
             using (ApplicationContext db = new ApplicationContext())
             {
                 int i = 0;
-                foreach (var per in static_result_people.Values.AsParallel())
+                Parallel.ForEach(static_result_people.Values, per =>
                 {
-                    
-                    if (per == null || (per.actor_movis_id.Count == 0 && per.director_movies_id.Count == 0))
-                        continue;
-                    per.actor_movies_names = list_withIDfilms_to_string(per.actor_movis_id);
-                    per.director_movies_names = list_withIDfilms_to_string(per.director_movies_id);
-                    
-                    
-                    db.Humans.Add(per);
+                    if (!(per == null || (per.actor_movis_id.Count == 0 && per.director_movies_id.Count == 0)))
+                    {
+                        per.list_withIDfilms_to_string(global_films_id_name, per.actor_movis_id, true);
+                        per.list_withIDfilms_to_string(global_films_id_name, per.director_movies_id, false);
+                        db.Humans.Add(per);
 
-                    if (i % 100000 == 0)
-                        Console.WriteLine($"{i} persons saved");
-                    i += 1;
-                    db.SaveChanges();
-                }
+                        if (i % 100000 == 0)
+                            Console.WriteLine($"{i} persons saved");
+                        i += 1;
+                        db.SaveChanges();
+                    }
+                    
+                });
                 Console.WriteLine("Persons saving in process...");
             }
             Console.WriteLine("Persons saved correctly");
         }
-
-        static string list_withIDfilms_to_string(List<string> movies_id)
-        {
-            string result = "";
-            int i = 1;
-            foreach (var mov_id in movies_id)
-            {
-                if (i > 10)
-                    break;
-                foreach (var mov_name in global_films_id_name[mov_id])
-                {
-                    result += $"{i}) {mov_name} ";
-                    i += 1;
-                }
-            }
-            return result;
-        }
-        static string list_to_string(List<Movie> movies)
-        {
-            string result = "";
-            int i = 1;
-            foreach (var elem in movies)
-            {
-                result += $"{i}) {elem.name} ";
-                i += 1;
-                if (i >= 100)
-                    break;
-            }
-            return result;
-        }
-        static string iter_to_string(HashSet<string> iter)
-        {
-            string result = "";
-            int i = 1;
-            foreach (var elem in iter)
-            {
-                result += $"{i}) {elem} ";
-                i += 1;
-            }
-            return result;
-        }
         
-        static void testing_DB()
-        {
-            using (ApplicationContext db = new ApplicationContext())
-            {
-                Movie term = new Movie { name = "Terminator", MovieId = "1" };
-                term.rating = "6.1";
-                term.actors = new HashSet<string>() { "James Cameron", "Linda Hamilton", "Arnold Schwarzenegger" };
-                term.directors = new HashSet<string>() { "James Cameron", "Ryan McDonald", "Ben Hernandez" };
-                term.actors_str = iter_to_string(term.actors);
-                term.directors_str = iter_to_string(term.directors);
+        //static void testing_DB()
+        //{
+        //    using (ApplicationContext db = new ApplicationContext())
+        //    {
+        //        Movie term = new Movie { name = "Terminator", MovieId = "1" };
+        //        term.rating = "6.1";
+        //        term.actors = new HashSet<string>() { "James Cameron", "Linda Hamilton", "Arnold Schwarzenegger" };
+        //        term.directors = new HashSet<string>() { "James Cameron", "Ryan McDonald", "Ben Hernandez" };
+        //        term.actors_str = iter_to_string(term.actors);
+        //        term.directors_str = iter_to_string(term.directors);
 
-                Movie term1 = new Movie { name = "Terminator", MovieId = "1" };
-                term1.rating = "6.1";
-                term1.actors = new HashSet<string>() { "James Cameron", "Linda Hamilton", "Arnold Schwarzenegger" };
-                term1.directors = new HashSet<string>() { "James Cameron", "Ryan McDonald", "Ben Hernandez" };
-                term1.actors_str = iter_to_string(term.actors);
-                term1.directors_str = iter_to_string(term.directors);
+        //        Movie term1 = new Movie { name = "Terminator", MovieId = "1" };
+        //        term1.rating = "6.1";
+        //        term1.actors = new HashSet<string>() { "James Cameron", "Linda Hamilton", "Arnold Schwarzenegger" };
+        //        term1.directors = new HashSet<string>() { "James Cameron", "Ryan McDonald", "Ben Hernandez" };
+        //        term1.actors_str = iter_to_string(term.actors);
+        //        term1.directors_str = iter_to_string(term.directors);
 
 
-                Tag tag = new Tag("comedy");
-                tag.movies_str = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
+        //        Tag tag = new Tag("comedy");
+        //        tag.movies_str = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
 
-                Person per = new Person("reynolds rayan");
-                per.actor_movies_names = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
-                per.director_movies_names = list_to_string(new List<Movie>() { new Movie("drive") });
+        //        Person per = new Person("reynolds rayan");
+        //        per.actor_movies_names = list_to_string(new List<Movie>() { new Movie("дедпул"), new Movie("дедпул 2") });
+        //        per.director_movies_names = list_to_string(new List<Movie>() { new Movie("drive") });
                 
-                //db.Humans.Add(per);
-                //db.Tags.Add(tag);
-                //db.Movies.Add(term);
-                //db.Movies.Add(term1);
+        //        //db.Humans.Add(per);
+        //        //db.Tags.Add(tag);
+        //        //db.Movies.Add(term);
+        //        //db.Movies.Add(term1);
                 
-                db.SaveChanges();
-                Console.WriteLine("Test objects saved correctly");
-            }
-        }
+        //        db.SaveChanges();
+        //        Console.WriteLine("Test objects saved correctly");
+        //    }
+        //}
         static void while_true_answer()
         {
             while (true)

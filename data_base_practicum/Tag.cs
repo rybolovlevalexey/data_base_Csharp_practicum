@@ -15,6 +15,15 @@ namespace data_base_practicum
         public string text { get; set; }
         public string? movies_str { get; set; }
 
+        public void list_to_movies(List<Movie> movies)
+        {
+            StringBuilder result = new StringBuilder();
+            Parallel.ForEach(movies, elem =>
+            {
+                result.Append($"{elem.name} ");
+            });
+            movies_str = result.ToString();
+        }
         public Tag() { }
         public Tag(string tag_name) { text = tag_name; }
     }
